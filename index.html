@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Astro Blaster - 3D Space FPS</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        font-family: "Courier New", monospace;
+        overflow: hidden;
+        cursor: auto;
+      }
+
+      #gameContainer {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      #hud {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: #00ff00;
+        font-size: 20px;
+        text-shadow: 0 0 10px #00ff00;
+      }
+
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 20px;
+        border: 2px solid #00ff00;
+        border-radius: 50%;
+        box-shadow: 0 0 20px #00ff00;
+      }
+
+      #menu {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #00ff00;
+        text-align: center;
+        pointer-events: all;
+      }
+
+      #menuContent {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        z-index: 10;
+      }
+
+      #menuButtons {
+        display: flex;
+        flex-direction: row;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      #menu h1 {
+        font-size: 48px;
+        margin-bottom: 20px;
+        text-shadow: 0 0 20px #00ff00;
+        animation: glow 2s ease-in-out infinite alternate;
+      }
+
+      @keyframes glow {
+        from {
+          text-shadow: 0 0 20px #00ff00;
+        }
+        to {
+          text-shadow: 0 0 30px #00ff00, 0 0 40px #00ff00;
+        }
+      }
+
+      #menu button {
+        padding: 15px 30px;
+        margin: 10px;
+        background: transparent;
+        border: 2px solid #00ff00;
+        color: #00ff00;
+        font-size: 18px;
+        font-family: "Courier New", monospace;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      #menu button:hover {
+        background: #00ff00;
+        color: #000;
+        box-shadow: 0 0 20px #00ff00;
+      }
+
+      #gameOver {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #ff0000;
+        text-align: center;
+        pointer-events: all;
+      }
+
+      #gameOver h2 {
+        font-size: 36px;
+        margin-bottom: 20px;
+        text-shadow: 0 0 20px #ff0000;
+      }
+
+      #instructions {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #00ff00;
+        font-size: 11px;
+        text-align: center;
+        z-index: 5;
+        max-height: 25vh;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 10px;
+        border-radius: 8px;
+        width: 85%;
+        max-width: 500px;
+      }
+
+      .hide-cursor {
+        cursor: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameContainer">
+      <div id="ui">
+        <div id="hud">
+          <div>Score: <span id="score">0</span></div>
+          <div>Wave: <span id="wave">1</span></div>
+          <div>Health: <span id="health">100</span></div>
+          <div>Ammo: <span id="ammo">30</span></div>
+          <div id="powerupStatus" style="margin-top: 10px; font-size: 16px">
+            <div id="activePowerUps"></div>
+          </div>
+        </div>
+        <div id="crosshair"></div>
+      </div>
+
+      <div id="menu">
+        <div id="menuContent">
+          <h1>ASTRO BLASTER</h1>
+          <p>Defend the galaxy from endless waves of space threats!</p>
+          <div id="menuButtons">
+            <button onclick="startGame()">START GAME</button>
+            <button onclick="showInstructions()">INSTRUCTIONS</button>
+            <button
+              onclick="hideInstructions()"
+              id="backButton"
+              style="display: none"
+            >
+              BACK
+            </button>
+          </div>
+        </div>
+        <div id="instructions" style="display: none">
+          <p><strong>Controls:</strong></p>
+          <p>Mouse: Look around | WASD: Move | Left Click: Shoot | R: Reload</p>
+          <p>
+            Survive waves of asteroids and alien drones. Each wave gets harder!
+          </p>
+          <p><strong>Power-ups:</strong></p>
+          <p>
+            • <span style="color: #ff4444">RAPID FIRE</span> - Automatic rapid
+            shooting
+          </p>
+          <p>
+            • <span style="color: #ffaa00">SHOTGUN</span> - Spread shot with
+            multiple projectiles
+          </p>
+          <p>
+            • <span style="color: #4444ff">SHIELD</span> - Protection from enemy
+            damage
+          </p>
+          <p>
+            • <span style="color: #44ff44">MULTI-SHOT</span> - Three projectiles
+            in a line
+          </p>
+          <p>
+            • <span style="color: #ff44ff">EXPLOSIVE</span> - Projectiles
+            explode on impact
+          </p>
+          <p>
+            • <span style="color: #ffff44">INFINITE AMMO</span> - Unlimited
+            ammunition
+          </p>
+        </div>
+      </div>
+
+      <div id="gameOver">
+        <h2>GAME OVER</h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <p>Waves Survived: <span id="finalWave">0</span></p>
+        <button onclick="restartGame()">PLAY AGAIN</button>
+        <button onclick="showMenu()">MAIN MENU</button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      let scene, camera, renderer, controls;
+      let gameState = "menu"; // menu, playing, gameOver
+      let player,
+        enemies = [],
+        projectiles = [],
+        particles = [],
+        powerUps = [];
+      let score = 0,
+        wave = 1,
+        health = 100,
+        ammo = 30,
+        maxAmmo = 30;
+      let enemySpawnTimer = 0,
+        waveTimer = 0,
+        powerUpSpawnTimer = 0;
+      let keys = {},
+        mouseX = 0,
+        mouseY = 0,
+        mouseLocked = false;
+
+      // Power-up system
+      let activePowerUps = {};
+      let powerUpEffects = {
+        rapidFire: { active: false, duration: 0, fireRate: 0 },
+        shotgun: { active: false, duration: 0, shots: 0 },
+        shield: { active: false, duration: 0 },
+        multiShot: { active: false, duration: 0, shots: 0 },
+        explosive: { active: false, duration: 0 },
+        infiniteAmmo: { active: false, duration: 0 },
+      };
+
+      // Audio context for sound effects
+      let audioContext;
+
+      // Game constants
+      const PLAYER_SPEED = 0.1;
+      const PROJECTILE_SPEED = 0.8;
+      const ENEMY_SPEED = 0.02;
+      const PARTICLE_COUNT = 50;
+      const POWERUP_DURATION = 600; // 10 seconds at 60fps
+      const POWERUP_SPAWN_RATE = 1200; // 20 seconds
+
+      function init() {
+        // Create scene
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000020, 1, 100);
+
+        // Create camera
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        );
+        camera.position.set(0, 0, 0);
+
+        // Create renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000020);
+        renderer.physicallyCorrectLights = true;
+        document
+          .getElementById("gameContainer")
+          .appendChild(renderer.domElement);
+
+        // Create starfield background
+        createStarfield();
+
+        // Create lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 5);
+        scene.add(directionalLight);
+
+        // Setup controls
+        setupControls();
+
+        // Setup audio
+        setupAudio();
+
+        // Handle window resize
+        window.addEventListener("resize", onWindowResize);
+
+        // Start render loop
+        animate();
+      }
+
+      function createStarfield() {
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsMaterial = new THREE.PointsMaterial({
+          color: 0xffffff,
+          size: 2,
+        });
+
+        const starsVertices = [];
+        for (let i = 0; i < 1000; i++) {
+          const x = (Math.random() - 0.5) * 2000;
+          const y = (Math.random() - 0.5) * 2000;
+          const z = (Math.random() - 0.5) * 2000;
+          starsVertices.push(x, y, z);
+        }
+
+        starsGeometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(starsVertices, 3)
+        );
+        const starField = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(starField);
+      }
+
+      function setupControls() {
+        document.addEventListener("keydown", (e) => {
+          keys[e.code] = true;
+          if (e.code === "KeyR") reload();
+        });
+
+        document.addEventListener("keyup", (e) => {
+          keys[e.code] = false;
+        });
+
+        document.addEventListener("mousemove", (e) => {
+          if (!mouseLocked) return;
+          mouseX += e.movementX * 0.002;
+          mouseY += e.movementY * 0.002;
+          mouseY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, mouseY));
+        });
+
+        document.addEventListener("click", (e) => {
+          if (gameState === "playing" && mouseLocked) {
+            shoot();
+          } else if (gameState === "playing" && !mouseLocked) {
+            lockPointer();
+          }
+        });
+
+        document.addEventListener("pointerlockchange", () => {
+          mouseLocked = document.pointerLockElement === renderer.domElement;
+        });
+      }
+
+      function setupAudio() {
+        try {
+          audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+        } catch (e) {
+          console.log("Audio not supported");
+        }
+      }
+
+      function playSound(frequency, duration, type = "sine") {
+        if (!audioContext) return;
+
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.setValueAtTime(
+          frequency,
+          audioContext.currentTime
+        );
+        oscillator.type = type;
+
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.01,
+          audioContext.currentTime + duration
+        );
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + duration);
+      }
+
+      function startGame() {
+        gameState = "playing";
+        document.getElementById("menu").style.display = "none";
+        document.getElementById("gameOver").style.display = "none";
+        document.body.classList.add("hide-cursor");
+
+        // Reset game state
+        score = 0;
+        wave = 1;
+        health = 100;
+        ammo = maxAmmo;
+        enemies = [];
+        projectiles = [];
+        particles = [];
+        powerUps = [];
+        powerUpSpawnTimer = 0;
+
+        // Reset power-up effects
+        for (let effect in powerUpEffects) {
+          powerUpEffects[effect].active = false;
+          powerUpEffects[effect].duration = 0;
+        }
+
+        updateHUD();
+        lockPointer();
+      }
+
+      function restartGame() {
+        startGame();
+      }
+
+      function showMenu() {
+        gameState = "menu";
+        document.getElementById("menu").style.display = "flex";
+        document.getElementById("gameOver").style.display = "none";
+        document.body.classList.remove("hide-cursor");
+        unlockPointer();
+      }
+
+      function showInstructions() {
+        document.getElementById("instructions").style.display = "block";
+        document.getElementById("backButton").style.display = "inline-block";
+      }
+
+      function hideInstructions() {
+        document.getElementById("instructions").style.display = "none";
+        document.getElementById("backButton").style.display = "none";
+      }
+
+      function lockPointer() {
+        renderer.domElement.requestPointerLock();
+      }
+
+      function unlockPointer() {
+        document.exitPointerLock();
+      }
+
+      function gameOver() {
+        gameState = "gameOver";
+        document.getElementById("finalScore").textContent = score;
+        document.getElementById("finalWave").textContent = wave - 1;
+        document.getElementById("gameOver").style.display = "flex";
+        document.body.classList.remove("hide-cursor");
+        unlockPointer();
+        playSound(200, 1, "sawtooth");
+      }
+
+      function updateHUD() {
+        document.getElementById("score").textContent = score;
+        document.getElementById("wave").textContent = wave;
+        document.getElementById("health").textContent = Math.max(0, health);
+        document.getElementById("ammo").textContent = ammo;
+      }
+
+      function createEnemy(type = "asteroid") {
+        let geometry, material, enemy;
+
+        switch (type) {
+          case "asteroid":
+            geometry = new THREE.DodecahedronGeometry(1, 0);
+            material = new THREE.MeshLambertMaterial({
+              color: 0x654321,
+              emissive: 0x221100,
+              emissiveIntensity: 0.1,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+
+          case "drone":
+            geometry = new THREE.BoxGeometry(1, 1, 1);
+            material = new THREE.MeshLambertMaterial({
+              color: 0xff4444,
+              emissive: 0x440000,
+              emissiveIntensity: 0.2,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+
+          case "shadowBeast":
+            // Large, menacing shadow creature
+            geometry = new THREE.ConeGeometry(1.5, 3, 8);
+            material = new THREE.MeshLambertMaterial({
+              color: 0x220022,
+              emissive: 0x440044,
+              emissiveIntensity: 0.3,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+
+          case "spikeMonster":
+            // Spiky, aggressive creature
+            geometry = new THREE.OctahedronGeometry(1.2, 0);
+            material = new THREE.MeshLambertMaterial({
+              color: 0x8b0000,
+              emissive: 0x440000,
+              emissiveIntensity: 0.4,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+
+          case "voidWalker":
+            // Ethereal, fast-moving enemy
+            geometry = new THREE.SphereGeometry(0.8, 8, 6);
+            material = new THREE.MeshLambertMaterial({
+              color: 0x000000,
+              emissive: 0x660066,
+              emissiveIntensity: 0.5,
+              transparent: true,
+              opacity: 0.7,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+
+          case "boneCollector":
+            // Skeletal, terrifying enemy
+            geometry = new THREE.TorusGeometry(1, 0.3, 8, 16);
+            material = new THREE.MeshLambertMaterial({
+              color: 0x8b4513,
+              emissive: 0x2f1b14,
+              emissiveIntensity: 0.2,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+
+          case "nightmare":
+            // Large, boss-like creature
+            geometry = new THREE.IcosahedronGeometry(2, 0);
+            material = new THREE.MeshLambertMaterial({
+              color: 0x4b0082,
+              emissive: 0x1a0033,
+              emissiveIntensity: 0.6,
+            });
+            enemy = new THREE.Mesh(geometry, material);
+            break;
+        }
+
+        // Random spawn position around player
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 30 + Math.random() * 20;
+        enemy.position.x = Math.cos(angle) * distance;
+        enemy.position.z = Math.sin(angle) * distance;
+        enemy.position.y = (Math.random() - 0.5) * 10;
+
+        // Enemy-specific properties
+        const enemyStats = {
+          asteroid: { health: 1, speed: 1, score: 10, size: 1 },
+          drone: { health: 3, speed: 1.2, score: 25, size: 1 },
+          shadowBeast: { health: 5, speed: 0.8, score: 50, size: 1.5 },
+          spikeMonster: { health: 4, speed: 1.5, score: 40, size: 1.2 },
+          voidWalker: { health: 2, speed: 2.0, score: 35, size: 0.8 },
+          boneCollector: { health: 6, speed: 0.6, score: 60, size: 1.3 },
+          nightmare: { health: 10, speed: 0.4, score: 100, size: 2 },
+        };
+
+        const stats = enemyStats[type];
+        enemy.scale.setScalar(stats.size);
+
+        enemy.userData = {
+          type: type,
+          health: stats.health,
+          maxHealth: stats.health,
+          speed: ENEMY_SPEED * stats.speed * (0.8 + Math.random() * 0.4),
+          rotationSpeed: (Math.random() - 0.5) * 0.15,
+          score: stats.score,
+          lastAttack: 0,
+          attackCooldown: 60 + Math.random() * 120, // 1-3 seconds
+          specialBehavior: Math.random() < 0.3, // 30% chance for special behavior
+        };
+
+        enemies.push(enemy);
+        scene.add(enemy);
+      }
+
+      function createPowerUp() {
+        const powerUpTypes = [
+          "rapidFire",
+          "shotgun",
+          "shield",
+          "multiShot",
+          "explosive",
+          "infiniteAmmo",
+        ];
+        const type =
+          powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+
+        const geometry = new THREE.OctahedronGeometry(0.8, 0);
+        const material = new THREE.MeshLambertMaterial({
+          color: getPowerUpColor(type),
+          emissive: getPowerUpColor(type),
+          emissiveIntensity: 0.5,
+        });
+
+        const powerUp = new THREE.Mesh(geometry, material);
+
+        // Random spawn position around player
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 15 + Math.random() * 10;
+        powerUp.position.x = Math.cos(angle) * distance;
+        powerUp.position.z = Math.sin(angle) * distance;
+        powerUp.position.y = (Math.random() - 0.5) * 8;
+
+        powerUp.userData = {
+          type: type,
+          rotationSpeed: 0.05,
+          bobSpeed: 0.02,
+          bobOffset: Math.random() * Math.PI * 2,
+        };
+
+        powerUps.push(powerUp);
+        scene.add(powerUp);
+      }
+
+      function getPowerUpColor(type) {
+        const colors = {
+          rapidFire: 0xff4444, // Red
+          shotgun: 0xffaa00, // Orange
+          shield: 0x4444ff, // Blue
+          multiShot: 0x44ff44, // Green
+          explosive: 0xff44ff, // Magenta
+          infiniteAmmo: 0xffff44, // Yellow
+        };
+        return colors[type] || 0xffffff;
+      }
+
+      function getPowerUpName(type) {
+        const names = {
+          rapidFire: "RAPID FIRE",
+          shotgun: "SHOTGUN",
+          shield: "SHIELD",
+          multiShot: "MULTI-SHOT",
+          explosive: "EXPLOSIVE",
+          infiniteAmmo: "INFINITE AMMO",
+        };
+        return names[type] || "UNKNOWN";
+      }
+
+      function getRandomEnemyType() {
+        const enemyTypes = [
+          "asteroid",
+          "drone",
+          "shadowBeast",
+          "spikeMonster",
+          "voidWalker",
+          "boneCollector",
+          "nightmare",
+        ];
+
+        // Wave-based enemy spawning
+        if (wave <= 2) {
+          // Early waves: mostly asteroids and drones
+          return Math.random() < 0.8 ? "asteroid" : "drone";
+        } else if (wave <= 4) {
+          // Mid waves: introduce scary enemies
+          const weights = [0.4, 0.3, 0.15, 0.1, 0.05, 0, 0]; // asteroid, drone, shadowBeast, spikeMonster, voidWalker, boneCollector, nightmare
+          return getWeightedRandom(enemyTypes, weights);
+        } else if (wave <= 6) {
+          // Later waves: more dangerous enemies
+          const weights = [0.2, 0.2, 0.2, 0.2, 0.1, 0.08, 0.02];
+          return getWeightedRandom(enemyTypes, weights);
+        } else {
+          // High waves: all enemies possible, more dangerous ones
+          const weights = [0.1, 0.15, 0.2, 0.2, 0.15, 0.15, 0.05];
+          return getWeightedRandom(enemyTypes, weights);
+        }
+      }
+
+      function getWeightedRandom(items, weights) {
+        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+        let random = Math.random() * totalWeight;
+
+        for (let i = 0; i < items.length; i++) {
+          random -= weights[i];
+          if (random <= 0) {
+            return items[i];
+          }
+        }
+        return items[items.length - 1];
+      }
+
+      function updateEnemyBehavior(enemy) {
+        const type = enemy.userData.type;
+        const time = Date.now() * 0.001;
+
+        switch (type) {
+          case "shadowBeast":
+            // Pulsing glow and erratic movement
+            const pulseIntensity = 0.3 + Math.sin(time * 3) * 0.2;
+            enemy.material.emissiveIntensity = pulseIntensity;
+            if (enemy.userData.specialBehavior) {
+              enemy.position.y += Math.sin(time * 2) * 0.02;
+            }
+            break;
+
+          case "spikeMonster":
+            // Aggressive spinning and color changes
+            enemy.rotation.z += 0.1;
+            const redPulse = 0.4 + Math.sin(time * 4) * 0.3;
+            enemy.material.emissiveIntensity = redPulse;
+            break;
+
+          case "voidWalker":
+            // Phasing in and out of reality
+            const phase = 0.5 + Math.sin(time * 2) * 0.3;
+            enemy.material.opacity = phase;
+            if (enemy.userData.specialBehavior) {
+              // Teleportation effect
+              if (Math.random() < 0.01) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 15 + Math.random() * 10;
+                enemy.position.x =
+                  camera.position.x + Math.cos(angle) * distance;
+                enemy.position.z =
+                  camera.position.z + Math.sin(angle) * distance;
+              }
+            }
+            break;
+
+          case "boneCollector":
+            // Slow, menacing rotation and size pulsing
+            enemy.rotation.x += 0.02;
+            enemy.rotation.z += 0.02;
+            const sizePulse = 1.3 + Math.sin(time * 1.5) * 0.2;
+            enemy.scale.setScalar(sizePulse);
+            break;
+
+          case "nightmare":
+            // Massive, terrifying presence with color shifting
+            const colorShift = Math.sin(time * 0.5) * 0.3;
+            enemy.material.emissiveIntensity = 0.6 + colorShift;
+            enemy.rotation.x += 0.01;
+            enemy.rotation.y += 0.01;
+            enemy.rotation.z += 0.01;
+            break;
+
+          case "drone":
+            // Hovering behavior
+            enemy.position.y += Math.sin(time * 3) * 0.01;
+            break;
+        }
+
+        // Health-based visual effects
+        const healthRatio = enemy.userData.health / enemy.userData.maxHealth;
+        if (healthRatio < 0.5) {
+          // Damaged enemies glow more intensely
+          enemy.material.emissiveIntensity *= 1.5;
+        }
+      }
+
+      function getEnemyExplosionColor(type) {
+        const colors = {
+          asteroid: 0xffaa00,
+          drone: 0xff4444,
+          shadowBeast: 0x440044,
+          spikeMonster: 0x8b0000,
+          voidWalker: 0x660066,
+          boneCollector: 0x8b4513,
+          nightmare: 0x4b0082,
+        };
+        return colors[type] || 0xffaa00;
+      }
+
+      function shoot() {
+        if (ammo <= 0 && !powerUpEffects.infiniteAmmo.active) return;
+
+        if (!powerUpEffects.infiniteAmmo.active) {
+          ammo--;
+        }
+
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+
+        // Handle different power-up effects
+        if (powerUpEffects.shotgun.active && powerUpEffects.shotgun.shots > 0) {
+          // Shotgun: Multiple projectiles in a spread
+          for (let i = 0; i < 5; i++) {
+            const spreadDirection = direction.clone();
+            const spreadAngle = (i - 2) * 0.1; // Spread of 0.4 radians total
+            spreadDirection.applyAxisAngle(
+              new THREE.Vector3(0, 1, 0),
+              spreadAngle
+            );
+            createProjectile(spreadDirection, 0xffaa00);
+          }
+          powerUpEffects.shotgun.shots--;
+        } else if (
+          powerUpEffects.multiShot.active &&
+          powerUpEffects.multiShot.shots > 0
+        ) {
+          // Multi-shot: 3 projectiles in a line
+          for (let i = 0; i < 3; i++) {
+            const offsetDirection = direction.clone();
+            const offset = (i - 1) * 0.2;
+            offsetDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), offset);
+            createProjectile(offsetDirection, 0x44ff44);
+          }
+          powerUpEffects.multiShot.shots--;
+        } else {
+          // Normal shot or other effects
+          createProjectile(
+            direction,
+            powerUpEffects.explosive.active ? 0xff44ff : 0x00ff00
+          );
+        }
+
+        playSound(800, 0.1, "square");
+        updateHUD();
+      }
+
+      function createProjectile(direction, color = 0x00ff00) {
+        const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const material = new THREE.MeshBasicMaterial({ color: color });
+        const projectile = new THREE.Mesh(geometry, material);
+
+        projectile.position.copy(camera.position);
+        projectile.userData = {
+          direction: direction,
+          life: 100,
+          explosive: powerUpEffects.explosive.active,
+        };
+
+        projectiles.push(projectile);
+        scene.add(projectile);
+      }
+
+      function reload() {
+        if (ammo < maxAmmo) {
+          ammo = maxAmmo;
+          playSound(400, 0.3, "sawtooth");
+          updateHUD();
+        }
+      }
+
+      function activatePowerUp(type) {
+        powerUpEffects[type].active = true;
+        powerUpEffects[type].duration = POWERUP_DURATION;
+
+        // Special handling for different power-ups
+        switch (type) {
+          case "rapidFire":
+            powerUpEffects[type].fireRate = 3; // 3x faster shooting
+            break;
+          case "shotgun":
+            powerUpEffects[type].shots = 20; // 20 shotgun blasts
+            break;
+          case "multiShot":
+            powerUpEffects[type].shots = 30; // 30 multi-shots
+            break;
+        }
+
+        playSound(1000, 0.3, "sine");
+        updatePowerUpDisplay();
+      }
+
+      function updatePowerUpEffects() {
+        for (let effect in powerUpEffects) {
+          if (powerUpEffects[effect].active) {
+            powerUpEffects[effect].duration--;
+
+            // Handle special shot-based power-ups
+            if (effect === "shotgun" || effect === "multiShot") {
+              if (powerUpEffects[effect].shots <= 0) {
+                powerUpEffects[effect].active = false;
+                powerUpEffects[effect].duration = 0;
+              }
+            } else if (powerUpEffects[effect].duration <= 0) {
+              powerUpEffects[effect].active = false;
+              powerUpEffects[effect].duration = 0;
+            }
+          }
+        }
+        updatePowerUpDisplay();
+      }
+
+      function updatePowerUpDisplay() {
+        const activePowerUpsDiv = document.getElementById("activePowerUps");
+        activePowerUpsDiv.innerHTML = "";
+
+        for (let effect in powerUpEffects) {
+          if (powerUpEffects[effect].active) {
+            const div = document.createElement("div");
+            div.style.color = getPowerUpColor(effect);
+            div.style.textShadow = `0 0 10px ${getPowerUpColor(effect).toString(
+              16
+            )}`;
+
+            let text = getPowerUpName(effect);
+            if (effect === "shotgun" || effect === "multiShot") {
+              text += ` (${powerUpEffects[effect].shots})`;
+            } else {
+              text += ` (${Math.ceil(powerUpEffects[effect].duration / 60)}s)`;
+            }
+
+            div.textContent = text;
+            activePowerUpsDiv.appendChild(div);
+          }
+        }
+      }
+
+      function createExplosion(position, color = 0xffaa00) {
+        for (let i = 0; i < 20; i++) {
+          const geometry = new THREE.SphereGeometry(0.05, 6, 6);
+          const material = new THREE.MeshBasicMaterial({ color: color });
+          const particle = new THREE.Mesh(geometry, material);
+
+          particle.position.copy(position);
+          particle.userData = {
+            velocity: new THREE.Vector3(
+              (Math.random() - 0.5) * 0.3,
+              (Math.random() - 0.5) * 0.3,
+              (Math.random() - 0.5) * 0.3
+            ),
+            life: 30,
+          };
+
+          particles.push(particle);
+          scene.add(particle);
+        }
+      }
+
+      function updateGame() {
+        if (gameState !== "playing") return;
+
+        // Update camera rotation
+        if (mouseLocked) {
+          camera.rotation.order = "YXZ";
+          camera.rotation.y = -mouseX;
+          camera.rotation.x = -mouseY;
+        }
+
+        // Player movement
+        const moveVector = new THREE.Vector3();
+        if (keys["KeyW"]) moveVector.z -= PLAYER_SPEED;
+        if (keys["KeyS"]) moveVector.z += PLAYER_SPEED;
+        if (keys["KeyA"]) moveVector.x -= PLAYER_SPEED;
+        if (keys["KeyD"]) moveVector.x += PLAYER_SPEED;
+
+        moveVector.applyQuaternion(camera.quaternion);
+        camera.position.add(moveVector);
+
+        // Spawn enemies
+        enemySpawnTimer++;
+        if (enemySpawnTimer > 120 - wave * 10) {
+          enemySpawnTimer = 0;
+          const enemyType = getRandomEnemyType();
+          createEnemy(enemyType);
+        }
+
+        // Spawn power-ups
+        powerUpSpawnTimer++;
+        if (powerUpSpawnTimer > POWERUP_SPAWN_RATE && powerUps.length < 3) {
+          powerUpSpawnTimer = 0;
+          createPowerUp();
+        }
+
+        // Wave progression
+        waveTimer++;
+        if (waveTimer > 1800 && enemies.length === 0) {
+          // 30 seconds
+          wave++;
+          waveTimer = 0;
+          playSound(600, 0.5, "sine");
+          updateHUD();
+        }
+
+        // Update power-ups
+        for (let i = powerUps.length - 1; i >= 0; i--) {
+          const powerUp = powerUps[i];
+          const distanceToPlayer = powerUp.position.distanceTo(camera.position);
+
+          // Animate power-up (rotation, bobbing, and pulsing)
+          powerUp.rotation.x += powerUp.userData.rotationSpeed;
+          powerUp.rotation.y += powerUp.userData.rotationSpeed;
+          powerUp.position.y +=
+            Math.sin(
+              Date.now() * powerUp.userData.bobSpeed +
+                powerUp.userData.bobOffset
+            ) * 0.01;
+
+          // Pulsing glow effect
+          const pulseIntensity = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
+          powerUp.material.emissiveIntensity = pulseIntensity;
+
+          // Magnetic effect - pull power-ups towards player when close
+          if (distanceToPlayer < 8) {
+            const direction = new THREE.Vector3()
+              .subVectors(camera.position, powerUp.position)
+              .normalize()
+              .multiplyScalar(0.05);
+            powerUp.position.add(direction);
+
+            // Play proximity sound occasionally
+            if (
+              !powerUp.userData.proximitySoundPlayed &&
+              distanceToPlayer < 5
+            ) {
+              playSound(1200, 0.1, "sine");
+              powerUp.userData.proximitySoundPlayed = true;
+            }
+          } else {
+            powerUp.userData.proximitySoundPlayed = false;
+          }
+
+          // Check collision with player (increased collision radius)
+          if (distanceToPlayer < 3) {
+            activatePowerUp(powerUp.userData.type);
+            createExplosion(
+              powerUp.position,
+              getPowerUpColor(powerUp.userData.type)
+            );
+            scene.remove(powerUp);
+            powerUps.splice(i, 1);
+          }
+        }
+
+        // Update projectiles
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+          const projectile = projectiles[i];
+          projectile.position.add(
+            projectile.userData.direction
+              .clone()
+              .multiplyScalar(PROJECTILE_SPEED)
+          );
+
+          projectile.userData.life--;
+          if (projectile.userData.life <= 0) {
+            scene.remove(projectile);
+            projectiles.splice(i, 1);
+          }
+        }
+
+        // Update enemies
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const enemy = enemies[i];
+
+          // Special enemy behaviors
+          updateEnemyBehavior(enemy);
+
+          // Move towards player
+          const direction = new THREE.Vector3()
+            .subVectors(camera.position, enemy.position)
+            .normalize()
+            .multiplyScalar(enemy.userData.speed);
+
+          enemy.position.add(direction);
+          enemy.rotation.x += enemy.userData.rotationSpeed;
+          enemy.rotation.y += enemy.userData.rotationSpeed;
+
+          // Check collision with player
+          if (enemy.position.distanceTo(camera.position) < 2) {
+            // Shield protection
+            if (!powerUpEffects.shield.active) {
+              health -= 20;
+              createExplosion(enemy.position, 0xff0000);
+              playSound(300, 0.5, "sawtooth");
+            } else {
+              createExplosion(enemy.position, 0x4444ff);
+              playSound(800, 0.2, "sine");
+            }
+
+            scene.remove(enemy);
+            enemies.splice(i, 1);
+
+            if (health <= 0) {
+              gameOver();
+              return;
+            }
+            updateHUD();
+          }
+        }
+
+        // Check projectile-enemy collisions
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+          const projectile = projectiles[i];
+          let hitEnemy = false;
+
+          for (let j = enemies.length - 1; j >= 0; j--) {
+            const enemy = enemies[j];
+
+            if (projectile.position.distanceTo(enemy.position) < 1.5) {
+              enemy.userData.health--;
+
+              if (enemy.userData.health <= 0) {
+                score += enemy.userData.score;
+                createExplosion(
+                  enemy.position,
+                  getEnemyExplosionColor(enemy.userData.type)
+                );
+                scene.remove(enemy);
+                enemies.splice(j, 1);
+                playSound(600, 0.2, "sine");
+              }
+
+              // Handle explosive projectiles
+              if (projectile.userData.explosive) {
+                createExplosion(projectile.position, 0xff44ff);
+                // Damage nearby enemies
+                for (let k = enemies.length - 1; k >= 0; k--) {
+                  const nearbyEnemy = enemies[k];
+                  if (
+                    nearbyEnemy.position.distanceTo(projectile.position) < 5
+                  ) {
+                    nearbyEnemy.userData.health--;
+                    if (nearbyEnemy.userData.health <= 0) {
+                      score +=
+                        nearbyEnemy.userData.type === "asteroid" ? 10 : 25;
+                      createExplosion(nearbyEnemy.position);
+                      scene.remove(nearbyEnemy);
+                      enemies.splice(k, 1);
+                    }
+                  }
+                }
+              }
+
+              scene.remove(projectile);
+              projectiles.splice(i, 1);
+              updateHUD();
+              hitEnemy = true;
+              break;
+            }
+          }
+
+          // Remove explosive projectiles after a short time if they don't hit anything
+          if (
+            projectile.userData.explosive &&
+            !hitEnemy &&
+            projectile.userData.life < 50
+          ) {
+            createExplosion(projectile.position, 0xff44ff);
+            scene.remove(projectile);
+            projectiles.splice(i, 1);
+          }
+        }
+
+        // Update particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const particle = particles[i];
+          particle.position.add(particle.userData.velocity);
+          particle.userData.life--;
+
+          if (particle.userData.life <= 0) {
+            scene.remove(particle);
+            particles.splice(i, 1);
+          }
+        }
+
+        // Update power-up effects
+        updatePowerUpEffects();
+
+        // Handle rapid fire
+        if (powerUpEffects.rapidFire.active && keys["Mouse0"]) {
+          if (Math.random() < 0.3) {
+            // 30% chance per frame to shoot
+            shoot();
+          }
+        }
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        updateGame();
+        renderer.render(scene, camera);
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      // Initialize the game
+      init();
+
+      // Ensure cursor is visible on initial load
+      document.body.classList.remove("hide-cursor");
+    </script>
+  </body>
+</html>
