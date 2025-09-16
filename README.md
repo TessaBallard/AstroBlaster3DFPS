@@ -51,7 +51,7 @@ Survive endless waves of space threats! Each wave introduces new enemy types and
 
 ## 🚀 Live Demo
 
-Play the game live at: https://TessaBallard.github.io/fps-game
+Play the game live at: https://tessaballard.github.io/fps-game
 
 _(Replace `yourusername` with your actual GitHub username)_
 
